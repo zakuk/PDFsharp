@@ -15,31 +15,31 @@ namespace PdfSharp.Pdf
         /// <summary>
         /// Initializes a new instance of the <see cref="PdfMetadata"/> class.
         /// </summary>
-        public PdfMetadata()
+        public PdfMetadata(bool includePdfUAIdentifierXMP)
         {
             Elements.SetName(Keys.Type, "/Metadata");
             Elements.SetName(Keys.Subtype, "/XML");
-            SetupStream();
+            SetupStream(includePdfUAIdentifierXMP);
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="PdfMetadata"/> class.
         /// </summary>
         /// <param name="document">The document that owns this object.</param>
-        public PdfMetadata(PdfDocument document)
+        public PdfMetadata(PdfDocument document, bool includePdfUAIdentifierXMP)
             : base(document)
         {
             document.Internals.AddObject(this);
             Elements.SetName(Keys.Type, "/Metadata");
             Elements.SetName(Keys.Subtype, "/XML");
-            SetupStream();
+            SetupStream(includePdfUAIdentifierXMP);
         }
 
-        void SetupStream()
+        void SetupStream(bool includePdfUAIdentifierXMP)
         {
             const string begin = @"begin=""";
 
-            var stream = GenerateXmp();
+            var stream = GenerateXmp(includePdfUAIdentifierXMP);
 
             // Preserve "ï»¿" if text is UTF8 encoded.
             var i = stream.IndexOf(begin, StringComparison.Ordinal);
@@ -58,7 +58,7 @@ namespace PdfSharp.Pdf
             CreateStream(bytes);
         }
 
-        string GenerateXmp()
+        string GenerateXmp(bool includePdfUAIdentifierXMP)
         {
             var instanceId = Guid.NewGuid().ToString();
             var documentId = Guid.NewGuid().ToString();
@@ -96,6 +96,36 @@ namespace PdfSharp.Pdf
                         <xmpMM:DocumentID>uuid:{documentId}</xmpMM:DocumentID>
                         <xmpMM:InstanceID>uuid:{instanceId}</xmpMM:InstanceID>
                       </rdf:Description>
+                      {(includePdfUAIdentifierXMP 
+                        ? $"""
+                            <rdf:Description rdf:about=""
+                                xmlns:pdfaExtension="http://www.aiim.org/pdfa/ns/extension/"
+                                xmlns:pdfaSchema="http://www.aiim.org/pdfa/ns/schema#"
+                                xmlns:pdfaProperty="http://www.aiim.org/pdfa/ns/property#"
+                                xmlns:pdfuaid="http://www.aiim.org/pdfua/ns/id/">
+                                <pdfaExtension:schemas>
+                                    <rdf:Bag>
+                                        <rdf:li rdf:parseType="Resource">
+                                            <pdfaSchema:schema>PDF/UA Universal Accessibility Schema</pdfaSchema:schema>
+                                            <pdfaSchema:namespaceURI>http://www.aiim.org/pdfua/ns/id/</pdfaSchema:namespaceURI>
+                                            <pdfaSchema:prefix>pdfuaid</pdfaSchema:prefix>
+                                            <pdfaSchema:property>
+                                                <rdf:Seq>
+                                                    <rdf:li rdf:parseType="Resource">
+                                                        <pdfaProperty:name>part</pdfaProperty:name>
+                                                        <pdfaProperty:valueType>Integer</pdfaProperty:valueType>
+                                                        <pdfaProperty:category>internal</pdfaProperty:category>
+                                                        <pdfaProperty:description>Indicates, which part of ISO 14289 standard is followed</pdfaProperty:description>
+                                                    </rdf:li>
+                                                </rdf:Seq>
+                                            </pdfaSchema:property>
+                                        </rdf:li>
+                                    </rdf:Bag>
+                                </pdfaExtension:schemas>
+                                <pdfuaid:part>1</pdfuaid:part>
+                            </rdf:Description>
+                            """
+                        : string.Empty )}
                     </rdf:RDF>
                   </x:xmpmeta>
                 <?xpacket end="w"?>

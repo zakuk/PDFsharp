@@ -205,7 +205,7 @@ namespace PdfSharp.Pdf
                 var writer = new PdfWriter(OutStream, effectiveSecurityHandler);
                 try
                 {
-                    DoSave(writer);
+                    DoSave(writer, false);
                 }
                 finally
                 {
@@ -217,13 +217,13 @@ namespace PdfSharp.Pdf
         /// <summary>
         /// Saves the document to the specified path. If a file already exists, it will be overwritten.
         /// </summary>
-        public void Save(string path)
+        public void Save(string path, bool includePdfUAIdentifierXMP)
         {
             if (!CanModify)
                 throw new InvalidOperationException(PSSR.CannotModify);
 
             using Stream stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None);
-            Save(stream);
+            Save(stream, includePdfUAIdentifierXMP);
         }
 
 #if UWP
@@ -256,7 +256,7 @@ namespace PdfSharp.Pdf
         /// <summary>
         /// Saves the document to the specified stream.
         /// </summary>
-        public void Save(Stream stream, bool closeStream)
+        public void Save(Stream stream, bool includePdfUAIdentifierXMP, bool closeStream)
         {
             if (!CanModify)
                 throw new InvalidOperationException(PSSR.CannotModify);
@@ -273,7 +273,7 @@ namespace PdfSharp.Pdf
             try
             {
                 writer = new PdfWriter(stream, effectiveSecurityHandler);
-                DoSave(writer);
+                DoSave(writer, includePdfUAIdentifierXMP);
             }
             finally
             {
@@ -300,13 +300,13 @@ namespace PdfSharp.Pdf
         /// The stream is not closed by this function.
         /// (Older versions of PDFsharp close the stream. That was not very useful.)
         /// </summary>
-        public void Save(Stream stream)
-            => Save(stream, false);
+        public void Save(Stream stream, bool includePdfUAIdentifierXMP)
+            => Save(stream, includePdfUAIdentifierXMP, false);
 
         /// <summary>
         /// Implements saving a PDF file.
         /// </summary>
-        void DoSave(PdfWriter writer)
+        void DoSave(PdfWriter writer, bool includePdfUAIdentifierXMP)
         {
             if (_pages == null || _pages.Count == 0)
             {
@@ -341,7 +341,7 @@ namespace PdfSharp.Pdf
                 else
                     Trailer.Elements.Remove(PdfTrailer.Keys.Encrypt);
 
-                PrepareForSave();
+                PrepareForSave(includePdfUAIdentifierXMP);
 
                 effectiveSecurityHandler?.PrepareForWriting();
 
@@ -382,10 +382,15 @@ namespace PdfSharp.Pdf
             }
         }
 
+        internal override void PrepareForSave()
+        {
+            throw new NotImplementedException();
+        }
+
         /// <summary>
         /// Dispatches PrepareForSave to the objects that need it.
         /// </summary>
-        internal override void PrepareForSave()
+        internal void PrepareForSave(bool includePdfUAIdentifierXMP)
         {
             PdfDocumentInformation info = Info;
 
@@ -436,7 +441,7 @@ namespace PdfSharp.Pdf
 
             // @PDF/UA
             // Create PdfMetadata now to include the final document information in XMP generation.
-            Catalog.Elements.SetReference(PdfCatalog.Keys.Metadata, new PdfMetadata(this));
+            Catalog.Elements.SetReference(PdfCatalog.Keys.Metadata, new PdfMetadata(this, includePdfUAIdentifierXMP));
         }
 
         /// <summary>
