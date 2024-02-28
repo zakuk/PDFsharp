@@ -633,7 +633,7 @@ namespace PdfSharp.Pdf.Content.Objects  // TODO: split into single files
                                 break;
 
                             default:
-#if true_
+#if true
                                 // Not absolutely necessary to use octal encoding for characters less than blank.
                                 if (ch < ' ')
                                 {
